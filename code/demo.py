@@ -33,18 +33,17 @@ from audio_clear import *
 import os.path
 
 # applies code of the panda3D sample disco
-class musicGame(ShowBase):
+class MusicGame(ShowBase):
     def makeInfo(self, i):
         return OnscreenText(
             parent=base.a2dTopLeft, align=TextNode.ALeft,
             style=1, fg=(1, 1, 0, 1), shadow=(0, 0, 0, .4),
             pos=(0.06, -0.1 -(.06 * i)), scale=.05, mayChange=True)
-    
-    def __init__(self):
-        ShowBase.__init__(self)
-        self.songButtonList=[]
-        self.BGM=base.loader.loadSfx("music/Nyte - Lone Walker.mp3")
-        self.taskMgr.add(self.BGMmanage,'manage')
+
+
+    # local music paths and scores stored in a local file
+    @staticmethod
+    def loadMusicList():
         if os.path.isfile('musicGameData.txt'):
             print('here')
             file=open('musicGameData.txt','r')
@@ -57,42 +56,14 @@ class musicGame(ShowBase):
             file.write('Memory\n')
             file.write('music/Elaine Paige-Memory.mp3\n')
             file.write('0\n')
+
+    def loadMusicScores(self):
         file=open('musicGameData.txt','r')
         self.data=file.readlines()
         self.highestScores=dict()
         self.musicNames=[]
         self.musicPathes=dict()
-        self.getSongs()
-        self.difficultyLevel='easy'
-        self.setBackgroundColor((0, 0, 0, 1))
-        self.musicList=[]
-        self.options=self.render.attachNewNode(PandaNode('options'))
-        self.mainMenu=self.render.attachNewNode(PandaNode("mainMenu"))
-        self.dance=self.render.attachNewNode(PandaNode('dance'))
-        self.loading=self.render.attachNewNode(PandaNode('loading'))
-        self.setting=self.render.attachNewNode(PandaNode('setting'))
-        self.scoreBoard=self.render.attachNewNode(PandaNode('scoreBoard'))
-        self.gameScore=self.render.attachNewNode(PandaNode('gameScore'))
-        self.buttonDict={'options':[],'mainMenu':[],'dance':[],'loading':[],
-        'setting':[],'scoreBoard':[],'gameScore':[]}
-        self.taskMgr.add(self.spinCam,'spinCam')
-        self.initoptions()
-        self.options.show()
-        self.mainMenu.hide()
-        self.dance.hide()
-        self.setting.hide()
-        self.scoreBoard.hide()
-        self.gameScore.hide()
-        self.selected='options'
-    
-    def BGMmanage(self,task):
-        if self.selected=='dance':
-            self.BGM.stop()
-        elif self.BGM.status()!=AudioSound.PLAYING:
-            self.BGM.play()
-        return task.cont
-    
-    def getSongs(self):
+
         dataList=[]
         for line in self.data:
             dataList.append(line.strip())
@@ -100,8 +71,77 @@ class musicGame(ShowBase):
             self.musicNames.append(dataList[i])
             self.musicPathes[dataList[i]]=dataList[i+1]
             self.highestScores[dataList[i]]=float(dataList[i+2])
+
+    def addPanel(self, panelName):
+        self.panels[panelName] = self.render.attachNewNode(PandaNode(panelName))
+
+    def configureGUIPanels(self):
+        # self.setBackgroundColor((0, 0, 0, 1))
+        # self.panels = dict()
+        # panelNames = ['options','mainMenu','dance','loading','setting','scoreBoard','gameScore']
+        # for name in panelNames:
+        #     self.addPanel(name)
+        self.options = self.render.attachNewNode(PandaNode('options'))
+        self.mainMenu = self.render.attachNewNode(PandaNode("mainMenu"))
+        self.dance = self.render.attachNewNode(PandaNode('dance'))
+        self.loading = self.render.attachNewNode(PandaNode('loading'))
+        self.setting = self.render.attachNewNode(PandaNode('setting'))
+        self.scoreBoard = self.render.attachNewNode(PandaNode('scoreBoard'))
+        self.gameScore = self.render.attachNewNode(PandaNode('gameScore'))
+
+    def displayPanel(self, displayPanel):
+        for panel in self.panels:
+            if(panel == displayPanel):
+                self.panels[panel].show()
+            else:
+                self.panels[panel].hide()
+
+    def displaySinglePanel(self,displayPanel):
+         self.panels[displayPanel].show()
+    
+    def __init__(self):
+        # Basic initialization of panda3D engine
+        ShowBase.__init__(self)
+
+        self.songButtonList=[]
+        self.BGM=base.loader.loadSfx("music/Nyte - Lone Walker.mp3")
+        self.taskMgr.add(self.BGMmanage,'manage')
+
+        self.loadMusicList()
+        self.loadMusicScores()
+
+        self.difficultyLevel='easy'
+        self.buttonDict={'options':[],'mainMenu':[],'dance':[],'loading':[],
+        'setting':[],'scoreBoard':[],'gameScore':[]}
+
+        self.configureGUIPanels()
+        self.configureMenuButtons()
+
+
+        self.options.show()
+        self.mainMenu.hide()
+        self.dance.hide()
+        self.setting.hide()
+        self.scoreBoard.hide()
+        self.gameScore.hide()
+        self.selected='options'
+        # self.displayPanel(self.selected)
+
+
+        self.musicList=[]
+        self.taskMgr.add(self.spinCam,'spinCam')
+        
+        
+        
+    
+    def BGMmanage(self,task):
+        if self.selected=='dance':
+            self.BGM.stop()
+        elif self.BGM.status()!=AudioSound.PLAYING:
+            self.BGM.play()
+        return task.cont
             
-    def initoptions(self):
+    def configureMenuButtons(self):
         self.optionBackground = OnscreenImage(parent=render2dp, image=
         'MENU_ORG_text.jpg') 
         self.cam2dp.node().getDisplayRegion(0).setSort(-20) 
@@ -284,8 +324,8 @@ class musicGame(ShowBase):
         self.optionBackground.hide()
         self.optionLists.hide()
         self.options.hide()
-        self.settingBackground = OnscreenImage(parent=render2dp, 
-        image='SET_ORG.jpg') 
+        self.settingBackground = OnscreenImage(parent=render2dp, image='SET_ORG.jpg') 
+
         self.cam2dp.node().getDisplayRegion(0).setSort(-20)
         self.difficulty=OnscreenText(pos=(0.4,0.3),scale=0.08,fg=(0.88,0.98,1,1),
                                     text='Difficulty:')
@@ -903,7 +943,7 @@ class musicGame(ShowBase):
             #END POINT OF SIMILARITY
         return Task.cont
 
-musicGame().run()
+MusicGame().run()
 
 
         
