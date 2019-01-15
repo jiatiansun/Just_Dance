@@ -1,9 +1,6 @@
 Rather Be
-/Users/jiatiansun/Desktop/15-112/tp/deliver3/code/Clean Bandit,Jess Glynne-Rather Be (Robin Schulz Edit).mp3
-0
+../music/Clean Bandit,Jess Glynne-Rather Be (Robin Schulz Edit).mp3
+213.5
 Memory
-/Users/jiatiansun/Desktop/Elaine Paige-Memory.mp3
-12.0
-Lone Walker
-/Users/jiatiansun/Desktop/music/1.mp3
-83.0
+../music/Elaine Paige-Memory.mp3
+0
