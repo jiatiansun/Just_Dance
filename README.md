@@ -15,4 +15,4 @@ After the installation, you run the program simply by cloning this repository an
 `ppython src/GUI.py`
 
 ## Demo
-Here is a short demo that shows how to play the game: [Demo](https://youtu.be/ZgFJ6O6PidU)
+Here is a short demo that shows you how to play the game: [Demo](https://youtu.be/ZgFJ6O6PidU)
