@@ -30,7 +30,6 @@ from direct.interval.LerpInterval import LerpColorInterval
 import sys
 import sys, copy,colorsys
 import os.path
-from core import *
 from util import *
 from panel import *
 import musicGameCore
