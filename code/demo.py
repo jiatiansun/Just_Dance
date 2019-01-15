@@ -29,71 +29,53 @@ from direct.interval.LerpInterval import LerpPosInterval
 from direct.interval.LerpInterval import LerpColorInterval
 import sys
 import sys, copy,colorsys
-from audio_clear import *
 import os.path
+from core import *
+from util import *
+from panel import *
+import musicGameCore
 
-class Panel(object):
-    # def __init__(self, background):
-    #     self.img = background
-    #     self.itemDict = dict()
+'''
+This is the GUI of the JustDance music rythm game using
+Panda3D engine
+Author: Jiatian SUn
+'''
+class JustDanceGUI(ShowBase):
+    def __init__(self):
+        # Basic initialization of panda3D engine
+        ShowBase.__init__(self)
 
-    def __init__(self, background, buttonMap):
-        self.img = background
-        self.itemDict = buttonMap
-        # print self.itemDict.keys()
+        self.songButtonList=[]
+        self.createDefaultMusicList()
+        self.loadMusicScores()
 
-    def addItem(self, itemKey, itemRef):
-        self.itemDict[itemKey] = itemRef
+        self.difficultyLevel='easy'
 
-    def getBackground(self):
-        return self.img
+        self.configureGUIPanels()
+        self.displayPanel('options')
 
-    def getItem(self,key):
-        return self.itemDict[key]
-
-    def show(self):
-        # print self.itemDict
-        # print self.itemDict.keys()
-        self.img.show()
-        for item in self.itemDict:
-            # print item
-            self.itemDict[item].show()
-
-    def hide(self):
-        self.img.hide()
-        for item in self.itemDict:
-            # print item
-            self.itemDict[item].hide()
-
-    def __str__(self):
-        return self.itemDict.keys()[0]
+        self.BGM=base.loader.loadSfx("../music/Nyte - Lone Walker.mp3")
+        self.BGM.play()
 
 
-# applies code of the panda3D sample disco
-class MusicGame(ShowBase):
-    def makeInfo(self, i):
-        return OnscreenText(
-            parent=base.a2dTopLeft, align=TextNode.ALeft,
-            style=1, fg=(1, 1, 0, 1), shadow=(0, 0, 0, .4),
-            pos=(0.06, -0.1 -(.06 * i)), scale=.05, mayChange=True)
-
-
-    # local music paths and scores stored in a local file
+    # create a local file that stores local music paths and scores
     @staticmethod
-    def loadMusicList():
+    def createDefaultMusicList():
+        # check if the file is created
         if os.path.isfile('musicGameData.txt'):
             print('here')
             file=open('musicGameData.txt','r')
         else:
             file=open('musicGameData.txt','w')
             file.write('Rather Be\n')
-            file.write('music/Clean Bandit,Jess Glynne-Rather '+
+            file.write('../music/Clean Bandit,Jess Glynne-Rather '+
         'Be (Robin Schulz Edit).mp3\n')
             file.write('0\n')
             file.write('Memory\n')
-            file.write('music/Elaine Paige-Memory.mp3\n')
+            file.write('../music/Elaine Paige-Memory.mp3\n')
             file.write('0\n')
 
+    # Load history of music scores 
     def loadMusicScores(self):
         file=open('musicGameData.txt','r')
         self.data=file.readlines()
@@ -109,23 +91,20 @@ class MusicGame(ShowBase):
             self.musicPathes[dataList[i]]=dataList[i+1]
             self.highestScores[dataList[i]]=float(dataList[i+2])
 
-    def addPanel(self, panelName):
-        self.panels[panelName] = self.render.attachNewNode(PandaNode(panelName))
-
+    # configure all GUI panels
     def configureGUIPanels(self):
         self.setBackgroundColor((0, 0, 0, 1))
         self.panels = dict()
-        panelNames = ['options','mainMenu','dance','setting','scoreBoard','gameScore']
-        for name in panelNames:
-            self.addPanel(name)
-        # self.options = self.render.attachNewNode(PandaNode('options'))
-        # self.mainMenu = self.render.attachNewNode(PandaNode("mainMenu"))
-        # self.dance = self.render.attachNewNode(PandaNode('dance'))
-        # self.loading = self.render.attachNewNode(PandaNode('loading'))
-        # self.setting = self.render.attachNewNode(PandaNode('setting'))
-        # self.scoreBoard = self.render.attachNewNode(PandaNode('scoreBoard'))
-        # self.gameScore = self.render.attachNewNode(PandaNode('gameScore'))
+        self.cam2dp.node().getDisplayRegion(0).setSort(-20)
+        self.configureStartMenu()
+        self.configureMainMenu()
+        self.configureScoreBoard()
+        self.configureSetting()
+        self.configureDance()
+        self.configureImportMenu()
 
+    # the function displays a single panel and hides
+    # all other panels
     def displayPanel(self, displayPanel):
         for panel in self.panels:
             if(panel == displayPanel):
@@ -133,128 +112,60 @@ class MusicGame(ShowBase):
             else:
                 self.panels[panel].hide()
 
-    # def displaySinglePanel(self,displayPanel):
-    #      self.panels[displayPanel].show()
+    def getPanel(self,panelName):
+        return self.panels[panelName]
 
+    def setPanel(self,panelName,panel):
+        self.panels[panelName] = panel
+        return
+
+    # swich from displaying one panel to displaying the other panel
     def switchPanel(self,oldP,newP):
         self.panels[oldP].hide()
-        print 'switch\n'
-        print self.panels[newP]
         self.panels[newP].show()
 
-    
-    def __init__(self):
-        # Basic initialization of panda3D engine
-        ShowBase.__init__(self)
+    # get activities from the keybboard
+    def getEvent(self):
+        return self.pressed
 
-        self.songButtonList=[]
-        self.BGM=base.loader.loadSfx("music/Nyte - Lone Walker.mp3")
-        self.taskMgr.add(self.BGMmanage,'manage')
-
-        self.loadMusicList()
-        self.loadMusicScores()
-
-        self.difficultyLevel='easy'
-        # self.buttonDict={'options':[],'mainMenu':[],'dance':[],'loading':[],
-        # 'setting':[],'scoreBoard':[],'gameScore':[]}
-
-        self.musicList=[]
-        self.taskMgr.add(self.spinCam,'spinCam')
-
-        self.configureGUIPanels()
-        self.configureStartMenu()
-        self.initMainMenu()
-        self.configureScoreBoard()
-        self.configureSetting()
-        # self.dance = self.render.attachNewNode(PandaNode('dance'))
-        self.configureDance()
-
-        self.displayPanel('options')
-        # self.mainMenu.hide()
-        # self.options.show()
-        # self.dance.hide()
-        # self.setting.hide()
-        # self.scoreBoard.hide()
-        # self.gameScore.hide()
-        self.selected='options'
-        # self.displayPanel(self.selected)
-
-
-        
-    
-    def BGMmanage(self,task):
-        if self.selected=='dance':
-            self.BGM.stop()
-        elif self.BGM.status()!=AudioSound.PLAYING:
-            self.BGM.play()
-        return task.cont
-            
+    # configure the start menu
     def configureStartMenu(self):
-        self.optionBackground = OnscreenImage(parent=render2dp, image=
-        'MENU_ORG_text.jpg') 
-        self.cam2dp.node().getDisplayRegion(0).setSort(-20) 
-        self.settingButton = DirectButton(pos=(0.1, 0, 0), text=" Setting",
+        optionBackground = OnscreenImage(parent=render2dp, image=
+        '../textures/MENU_ORG_text.jpg') 
+
+        settingButton = DirectButton(pos=(0.1, 0, 0), text=" Setting",
                                    scale=.08, pad=(.2, .2), frameColor=(0.02,0.3,0.5,0.4),
                                    text_fg=(0,0.4,0.7,1),
                                    text_align=TextNode.ALeft,frameSize=(-4.3,4,-0.6,1),
                                    text_pos=(-1,0,0),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda:self.changeMenu('options','setting'))
-        self.settingButton.resetFrameSize()
-        self.playButton = DirectButton(pos=(0.1, 0, .15), text="Start",
+                                   command=lambda:self.switchPanel('options','setting'))
+        settingButton.resetFrameSize()
+        playButton = DirectButton(pos=(0.1, 0, .15), text="Start",
                                    scale=.08, pad=(.2, .2),frameColor=(0.02,0.3,0.5,0.4),
                                    text_fg=(0.1,0.4,0.7,1),
                                    text_align=TextNode.ALeft,
                                    frameSize=(-3,4,-0.6,1),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda: self.changeMenu('options','mainMenu'))
-        self.scoreBoardButton= DirectButton(pos=(0, 0, -.15), text="HighScore",
+                                   command=lambda: self.switchPanel('options','mainMenu'))
+        scoreBoardButton= DirectButton(pos=(0, 0, -.15), text="HighScore",
                                    scale=.08, pad=(.2, .2),frameColor=(0.02,0.3,0.5,0.4),
                                    text_pos=(-1,0,0),
                                    text_fg=(0.1,0.4,0.7,1),text_align=TextNode.ALeft,frameSize=(-5,5.3,-0.6,1),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda: self.changeMenu('options','scoreBoard'))
-        numItemsVisible = 4
-        itemHeight = 0.25
-        self.optionLists=DirectFrame(frameSize=(-0.3,0.3,-0.2,0.2),pos=(0.8,0,-0.5),frameColor=(0,0,0,0))
-        self.settingButton.reparentTo(self.optionLists)
-        self.playButton.reparentTo(self.optionLists)
-        self.scoreBoardButton.reparentTo(self.optionLists)
-        # self.optionLists.reparentTo(self.options)
-        # self.optionLists=DirectFrame()
+                                   command=lambda: self.switchPanel('options','scoreBoard'))
 
-        self.panels['options'] = Panel(self.optionBackground,
-                                        {'setting':self.settingButton, 'play':self.playButton,
-                                        'score':self.scoreBoardButton})
-        # self.panels['options'].addItem('setting',self.settingButton)
-        # self.panels['options'].addItem('play',self.playButton)
-        # self.panels['options'].addItem('score',self.scoreBoardButton)
+        optionsList=DirectFrame(frameSize=(-0.3,0.3,-0.2,0.2),pos=(0.8,0,-0.5),frameColor=(0,0,0,0))
+        settingButton.reparentTo(optionsList)
+        playButton.reparentTo(optionsList)
+        scoreBoardButton.reparentTo(optionsList)
 
-        # self.optionLists.reparentTo(self.options)
-        # self.optionBackground.reparentTo(self.options)
-        # self.buttonDict['options']+=[self.optionLists]
-
-    def changeMenu(self,oldP,newP):
-        self.selected==newP
-        self.switchPanel(oldP,newP)
-
-    def changeToMenu(self):
-        self.selected=='mainMenu'
-        # self.initMainMenu()
-        # self.optionBackground.hide()
-        # self.optionLists.hide()
-        self.switchPanel('options','mainMenu')
-        # self.options.hide()
-        # self.mainMenu.show()
+        self.setPanel('options', Panel(optionBackground, {'optionList': optionsList}))
         
-    def initMainMenu(self):
-        self.createMainMenu()
-        self.disableMouse()
-    
-    def createMainMenu(self):
+    # configure the main menu (music list page)
+    def configureMainMenu(self):
         self.mainMenuBackground = OnscreenImage(parent=render2dp, 
-                            image='BGM_ORG_text.jpg') 
-        self.cam2dp.node().getDisplayRegion(0).setSort(-20) 
+                            image='../textures/BGM_ORG_text.jpg') 
         self.songList = DirectScrolledFrame(canvasSize = (-0.3,0.2,-1,1), 
                             frameSize = (-0.45,0.55,-0.2,0.2)) 
         self.songList['frameColor']=(0.5,0.5,1,0)
@@ -275,63 +186,38 @@ class MusicGame(ShowBase):
                                    command=self.preInitDance,extraArgs=(i,))
             defaultSong['frameSize']=(-4,6,-0.7,0.7)
             defaultSong.reparentTo(self.songList.getCanvas())
-            self.musicList.append(defaultSong)
-        self.importButton=DirectButton(pos=(0,0,-0.6),text='+ IMPORT NEW MUSIC ',
+        importButton=DirectButton(pos=(0,0,-0.6),text='+ IMPORT NEW MUSIC ',
                                     scale=0.1,pad=(.2,.2),frameColor=(0.058,.294,0.545,0.7),
                                     text_fg=(0.88,0.98,1,1),frameSize=(-6.5,6.5,-0.8,0.8),
                                     text_scale=(0.85,0.85),
-                        text_pos=(0.5,-0.4),rolloverSound=None, clickSound=None,
-                                   command=self.changeToImport)
-        self.backToOptionButton=DirectButton(text='<<BACK TO MENU',
+                                    text_pos=(0.5,-0.4),rolloverSound=None, clickSound=None,
+                                   command= lambda: self.switchPanel('mainMenu','import'))
+        backToOptionButton=DirectButton(text='<<BACK TO MENU',
                                     pos=(-1,0,0.8),scale=.1,pad=(.2, .2),
                                     frameColor=(1,1,1,0),
                                     text_pos=(1.3,-0.3),text_scale=(0.8,0.8),
                                     text_fg=(0.88,0.98,1,1),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda: self.changeMenu('mainMenu','options'))
+                                   command=lambda: self.switchPanel('mainMenu','options'))
 
-        self.panels['mainMenu'] = Panel(self.mainMenuBackground,
+        self.setPanel('mainMenu', Panel(self.mainMenuBackground,
                                         {'songs': self.songList,
-                                        'import': self.importButton,
-                                        'back': self.backToOptionButton})
-        # self.panels['mainMenu'].addItem('songs',self.songList)
-        # self.panels['mainMenu'].addItem('import',self.importButton)
-        # self.panels['mainMenu'].addItem('back',self.backToOptionButton)
+                                        'import': importButton,
+                                        'back': backToOptionButton}))
+        self.disableMouse()
 
-        # self.songList.reparentTo(self.mainMenu)
-        # self.importButton.reparentTo(self.mainMenu)
-        # self.backToOptionButton.reparentTo(self.mainMenu)
-
-    def backToOption(self):
-        self.mainMenu.hide()
-        # self.mainMenuBackground.hide()
-        # self.songList.hide()
-        # self.importButton.hide()
-        # self.backToOptionButton.hide()
-        self.options.show()
-        # self.optionBackground.show()
-        # self.optionLists.show()
-        
-    def changeToImport(self):
-        self.panels['mainMenu'].hide()
-        # self.songList.hide()
-        # self.importButton.hide()
-        # self.mainMenuBackground.hide()
-        # self.backToOptionButton.hide()
-        self.importBackground= OnscreenImage(parent=render2dp, 
-        image='BGM_ORG.jpg') 
-        self.cam2dp.node().getDisplayRegion(0).setSort(-20) 
-        self.newNameBox = DirectEntry(text = "" ,pos=(-0.4,0,0.5),scale=.08,
-                command=self.setNewSong,extraArgs=[str(0)],
-                                        frameColor=(1,1,1,0.3),
-        initialText="song name (please press enter after input)", 
+    # configure the import menu
+    def configureImportMenu(self):
+        importBackground= OnscreenImage(parent=render2dp, 
+        image='../textures/BGM_ORG.jpg') 
+        newNameBox = DirectEntry(text = "" ,pos=(-0.4,0,0.5),scale=.08,
+                                        frameColor=(1,1,1,0.3),initialText="", 
                                                 numLines = 3,focus=1) 
-        self.newPathBox = DirectEntry(text = "" ,pos=(-0.4,0,0.2),
+        newPathBox = DirectEntry(text = "" ,pos=(-0.4,0,0.2),
                                             frameColor=(1,1,1,0.3),
-                scale=.08,command=self.setNewSong,extraArgs=[str(1)],
-        initialText="song path (please press enter after input)", 
-                                                numLines = 5,focus=1) 
-        self.confirmationButton=DirectButton(text='IMPORT',pos=(0, 0, -0.3),
+                scale=.08,
+                initialText="", numLines = 5,focus=1)
+        confirmationButton=DirectButton(text='IMPORT',pos=(0, 0, -0.3),
                                    scale=.1, pad=(.2, .2),
                                     frameColor=(0.058,.294,0.545,0.7),
                                     text_pos=(0,-0.3),text_scale=(0.8,0.8),
@@ -339,28 +225,40 @@ class MusicGame(ShowBase):
                                     frameSize=(-6.5,6.5,-0.8,0.8),
                                    rolloverSound=None, clickSound=None,
                                    command=self.importNewSong)
-    def importNewSong(self):
-        self.musicPathes[self.newSongName]=self.newSongPath
-        self.musicNames.append(self.newSongName)
-        file=open('musicGameData.txt','a')
-        file.write(self.newSongName+'\n')
-        file.write(self.newSongPath+'\n')
-        file.write('0\n')
-        self.newSongName=''
-        self.newSongPath=''
-        self.newNameBox.destroy()
-        self.newPathBox.destroy()
-        self.confirmationButton.destroy()
-        self.importBackground.destroy()
-        self.mainMenuBackground.show()
-        self.importButton.show()
-        self.updateSongs()
-        self.songList.show()
+        backToOptionButton=DirectButton(text='<<BACK TO MUSIC LIST',
+                                    pos=(-1,0,0.8),scale=.1,pad=(.2, .2),
+                                    frameColor=(1,1,1,0),
+                                    text_pos=(1.3,-0.3),text_scale=(0.8,0.8),
+                                    text_fg=(0.88,0.98,1,1),
+                                   rolloverSound=None, clickSound=None,
+                                   command=lambda: self.switchPanel('import','mainMenu'))
+        self.setPanel('import',Panel(importBackground, {'newName': newNameBox,
+                        'newPath': newPathBox,'confirmButton': confirmationButton,
+                        'back':backToOptionButton}))
     
+    # function that loads new music from the import page
+    def importNewSong(self):
+        songName = self.getPanel('import').getItem('newName')
+        songPath = self.getPanel('import').getItem('newPath')
+
+        self.musicPathes[songName.get()] = songPath.get()
+        self.musicNames.append(songName.get())
+        file=open('musicGameData.txt','a')
+        file.write(songName.get()+'\n')
+        file.write(songPath.get()+'\n')
+        file.write('0\n')
+        self.updateSongs()
+        songName.enterText("")
+        songPath.enterText("")
+        self.switchPanel('import','mainMenu')
+    
+    # update songs in the list
     def updateSongs(self):
-        path=self.musicPathes[self.musicNames[-1]]
-        self.musicList.append(DirectButton(text=self.musicNames[-1],
-                                    pos=(0, 0,0.9-0.15*(len(self.musicList))),
+        name = self.musicNames[-1]
+        path=self.musicPathes[name]
+        idx = len(self.musicNames)-1
+        song = DirectButton(text=name,
+                                    pos=(0, 0,0.9-0.15*idx),
                                    scale=.1, pad=(.2, .2),
                                     frameColor=(0.058,.294,0.545,0.7),
                                     text_pos=(1.3,-0.3),text_scale=(0.8,0.8),
@@ -368,46 +266,20 @@ class MusicGame(ShowBase):
                                     frameSize=(-4,6,-0.7,0.7),
                                    rolloverSound=None, clickSound=None,
                                    command=self.preInitDance,extraArgs=
-                                    (-1,)))
-        self.highestScores[self.musicNames[-1]]=0
-        self.musicList[-1].reparentTo(self.songList.getCanvas())
-        
-        
-    def setNewSong(self,str,index):
-        if index=='0':
-            self.newSongName=str
-        elif index=='1':
-            self.newSongPath=str
-    
-    def preInitDance(self,index):
-        self.selected='dance'
-        self.initDance(self.musicPathes[self.musicNames[index]])
-        self.changeMenu('mainMenu','dance')
-        # self.mainMenuBackground.hide()
-        # self.backToOptionButton.hide()
-        # self.importButton.hide()
-        # self.songList.hide()
+                                    (-1,))
+        self.highestScores[name]=0
+        song.reparentTo(self.songList.getCanvas())
 
-        # self.dance.show()
-        # self.GUIarrows.show()
-        # self.scoreText.show()
-        self.currSong=self.musicNames[index]
-    
-    def changeDifficulty(self):
-        if self.difficultyLevel=='hard':
-            self.difficultyLevel='easy'
-            self.setDifficultyButton['text']='easy'
-        else:
-            self.difficultyLevel='hard'
-            self.setDifficultyButton['text']='hard'
+        scoreLabel=DirectButton(frameSize=(-0.3,0.3,-0.2,.2),pos=(0,0,0-idx*0.2),
+            text='%s:  %d'%(name,self.highestScores[name]),
+            text_align=TextNode.ALeft,text_scale=0.08,frameColor=(0,0,0,0),
+            text_fg=(1,1,1,1))
+        scoreLabel.reparentTo(self.getPanel('scoreBoard').getItem('frame').getCanvas())
         
+    # function that configures the setting panel
     def configureSetting(self):
-        # self.optionBackground.hide()
-        # self.optionLists.hide()
-        # self.options.hide()
-        self.settingBackground = OnscreenImage(parent=render2dp, image='SET_ORG.jpg') 
+        self.settingBackground = OnscreenImage(parent=render2dp, image='../textures/SET_ORG.jpg') 
 
-        self.cam2dp.node().getDisplayRegion(0).setSort(-20)
         self.difficulty=OnscreenText(pos=(0.4,0.3),scale=0.08,fg=(0.88,0.98,1,1),
                                     text='Difficulty:')
         
@@ -424,346 +296,402 @@ class MusicGame(ShowBase):
                                     text_pos=(1.3,-0.3),text_scale=(0.8,0.8),
                                     text_fg=(0.88,0.98,1,1),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda: self.changeMenu('setting', 'options'))
+                                   command=lambda: self.switchPanel('setting', 'options'))
 
         self.panels['setting'] = Panel(self.settingBackground,
                                         {'level': self.difficulty,
                                           'change': self.setDifficultyButton,
                                           'back': self.backToOptionButton3})
+
+    # function that helps create the dance
+    def preInitDance(self,index):
+        self.currSong=self.musicNames[index]
+        self.createDance(self.musicPathes[self.musicNames[index]])
+        self.switchPanel('mainMenu','dance')
     
-    def backToOption3(self):
-        self.settingBackground.hide()
-        self.setDifficultyButton.hide()
-        self.backToOptionButton3.hide()
-        self.optionBackground.show()
-        self.difficulty.hide()
-        self.optionLists.show()
-        # self.options.show()
-        
-    
-    # def turnToScoreBoard(self):
-    #     # self.options.hide()
-    #     self.optionBackground.hide()
-    #     self.optionLists.hide()
-    #     self.initScoreBoard()
-    #     self.scoreBoardBackground.show()
-    #     self.highScoreFrame.show()
-        
-    def configureScoreBoard(self):
-        self.scoreBoardBackground=OnscreenImage(parent=render2dp, 
-            image='HIGH_ORG_text.jpg')
-        self.highScoreTitle1=DirectLabel(frameSize=(-0.6,0.6,-0.2,.2),pos=(0,0,0.2),
+    # switch difficult level of the game
+    def changeDifficulty(self):
+        if self.difficultyLevel=='hard':
+            self.difficultyLevel='easy'
+            self.setDifficultyButton['text']='easy'
+        else:
+            self.difficultyLevel='hard'
+            self.setDifficultyButton['text']='hard'
+
+    def createHighScoreFrame(self):
+        highScoreFrame=DirectScrolledFrame(frameColor=(0.5,0.5,1,0),
+                                        canvasSize = (-0.3,0.2,-2,1), 
+                            frameSize = (-0.3,1.1,-0.8,0.3),pos=(0.2,0,0.2))
+
+        highScoreFrame['verticalScroll_thumb_frameColor']=(1,1,1,0.3)
+        highScoreFrame['verticalScroll_incButton_frameColor']=(1,1,1,0)
+        highScoreFrame['verticalScroll_decButton_frameColor']=(1,1,1,0)
+        highScoreFrame['verticalScroll_frameColor']=(0.5,0.5,1,0)
+
+        highScoreTitle1=DirectLabel(frameSize=(-0.6,0.6,-0.2,.2),pos=(0,0,0.9),
             text='Music',frameColor=(0,0,0,0),
             text_align=TextNode.ALeft,text_scale=0.08,text_fg=(1,1,1,1))
-        self.highScoreTitle2=DirectLabel(frameSize=(-0.6,0.6,-0.6,.6),pos=(0.4,0,0.2),
+        highScoreTitle2=DirectLabel(frameSize=(-0.6,0.6,-0.6,.6),pos=(0.4,0,0.9),
             text='Highest Score',text_fg=(1,1,1,1),frameColor=(0,0,0,0),
             text_align=TextNode.ALeft,text_scale=0.08)
 
-        self.cam2dp.node().getDisplayRegion(0).setSort(-20)
-        self.highScoreFrame=DirectScrolledFrame(frameColor=(0.5,0.5,1,0),
-                                        canvasSize = (-0.3,0.2,-1,1), 
-                            frameSize = (-0.3,1.1,-0.8,0.3),pos=(0.2,0,0))
-        self.highScoreFrame['verticalScroll_thumb_frameColor']=(1,1,1,0.3)
-        self.highScoreFrame['verticalScroll_incButton_frameColor']=(1,1,1,0)
-        self.highScoreFrame['verticalScroll_decButton_frameColor']=(1,1,1,0)
-        self.highScoreFrame['verticalScroll_frameColor']=(0.5,0.5,1,0)
-        self.highScoreTitle1.reparentTo(self.highScoreFrame)
-        self.highScoreTitle2.reparentTo(self.highScoreFrame)
+        highScoreTitle1.reparentTo(highScoreFrame.getCanvas())
+        highScoreTitle2.reparentTo(highScoreFrame.getCanvas())
 
         for i in range(len(self.musicNames)):
-            scoreLabel=DirectButton(frameSize=(-0.3,0.3,-0.2,.2),pos=(0,0,0-i*0.2),
+            scoreLabel=DirectButton(frameSize=(-0.3,0.3,-0.2,.2),pos=(0,0,0.7-i*0.2),
             text='%s:  %d'%(self.musicNames[i],self.highestScores[self.musicNames[i]]),
             text_align=TextNode.ALeft,text_scale=0.08,frameColor=(0,0,0,0),
             text_fg=(1,1,1,1))
-            scoreLabel.reparentTo(self.highScoreFrame)
+            scoreLabel.reparentTo(highScoreFrame.getCanvas())
+        return highScoreFrame
 
-        self.backToOptionButton2=DirectButton(text='<<BACK TO MENU',
+    
+    # configure the high score board
+    def configureScoreBoard(self):
+        scoreBoardBackground=OnscreenImage(parent=render2dp, 
+            image='../textures/HIGH_ORG_text.jpg')
+
+        highScoreFrame =  self.createHighScoreFrame()
+        # for i in range(len(self.musicNames)):
+        #     scoreLabel=DirectButton(frameSize=(-0.3,0.3,-0.2,.2),pos=(0,0,0.7-i*0.2),
+        #     text='%s:  %d'%(self.musicNames[i],self.highestScores[self.musicNames[i]]),
+        #     text_align=TextNode.ALeft,text_scale=0.08,frameColor=(0,0,0,0),
+        #     text_fg=(1,1,1,1))
+        #     scoreLabel.reparentTo(self.highScoreFrame.getCanvas())
+
+        backToOptionButton2=DirectButton(text='<<BACK TO MENU',
                                     pos=(-1,0,0.8),scale=.1,pad=(.2, .2),
                                     frameColor=(1,1,1,0),
                                     text_pos=(1.3,-0.3),text_scale=(0.8,0.8),
                                     text_fg=(0.88,0.98,1,1),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda: self.changeMenu('scoreBoard','options'))
+                                   command=lambda: self.switchPanel('scoreBoard','options'))
 
-        self.panels['scoreBoard'] = Panel(self.scoreBoardBackground,
-                                    {'title1':self.highScoreTitle1, 'title2':self.highScoreTitle2,
-                                    'frame':self.highScoreFrame,'back':self.backToOptionButton2})
+        self.panels['scoreBoard'] = Panel(scoreBoardBackground,
+                                    {'frame':highScoreFrame,'back':backToOptionButton2})
 
-    def backToOption2(self):
-        self.highScoreFrame.hide()
-        self.scoreBoardBackground.hide()
-        self.backToOptionButton2.hide()
-        self.optionBackground.show()
-        self.optionLists.show()
-        # self.options.show()
-    
-    def changeButtonState(self,mode):
-        for key in list(self.buttonDict.keys()):
-            if key==mode:
-                for button in self.buttonDict[key]:
-                    button.show()
-            else:
-                for otherButton in self.buttonDict[key]:
-                    button.hide()
-
-    def getPanel(self,panelName):
-        return self.panels[panelName]
-
-    def setPanel(self,panelName,panel):
-        self.panels[panelName] = panel
-        return
-
+    # configure the dance scene
     def configureDance(self):
+        self.PRESSED,self.NPRESSED,self.PERFECT,self.GOOD,self.MISS=10,-10,2,1,0
         danceNode = self.render.attachNewNode(PandaNode('dance'))
-        self.danceScene = self.loader.loadModel("models/disco_hall")
-        self.danceScene.reparentTo(danceNode)
-        self.danceScene.setPosHpr(0, 50, -4, 90, 0, 0)
-        #startPoint of application of disco
-        self.ambientLight = danceNode.attachNewNode(
-                                            AmbientLight("ambientLight"))
-        self.ambientLight.node().setColor((0.1, 0.1, 0.1, 1))
-        self.directionalLight = danceNode.attachNewNode(
-            DirectionalLight("directionalLight"))
-        self.directionalLight.node().setColor((.1, .1, .1, 1))
-        self.directionalLight.node().setDirection(LVector3(1, 1, -2))
-        self.directionalLight.setZ(6)
-        dlens = self.directionalLight.node().getLens()
-        dlens.setFilmSize(41, 21)
-        dlens.setNearFar(50, 75)
-        self.spotlight = camera.attachNewNode(Spotlight("spotlight"))
-        self.spotlight.node().setColor((.6, .6, .6, 0))
-        self.spotlight.node().setSpecularColor((0, 0, 0, 1))
-        self.spotlight.node().setLens(PerspectiveLens())
-        self.spotlight.node().getLens().setFov(24, 24)
-        self.spotlight.node().setAttenuation(LVector3(0.6, 0.0, 0.0))
-        self.spotlight.node().setExponent(60.0)
-        self.redHelper = loader.loadModel('models/sphere')
-        self.redHelper.setColor((0.2, 0.2, .35, 1))
-        self.redHelper.setPos(-6.5, -3.75, 0)
-        self.redHelper.setScale(.25)
-        self.redPointLight = self.redHelper.attachNewNode(
-            PointLight("redPointLight"))
-        self.redPointLight.node().setColor((.05, .3,.4, 1))
-        self.redPointLight.node().setAttenuation(LVector3(.1, 0.04, 0.0))
-        self.greenHelper = loader.loadModel('models/sphere')
-        self.greenHelper.setColor((0.2, 0.2, .35, 1))
-        self.greenHelper.setPos(0, 7.5, 0)
-        self.greenHelper.setScale(.25)
-        self.greenPointLight = self.greenHelper.attachNewNode(
-            PointLight("greenPointLight"))
-        self.greenPointLight.node().setAttenuation(LVector3(.1, .04, .0))
-        self.greenPointLight.node().setColor((.05, .3, .4, 1))
-        self.blueHelper = loader.loadModel('models/sphere')
-        self.blueHelper.setColor((0.2, 0.2, .35, 1))
-        self.blueHelper.setPos(6.5, -3.75, 0)
-        self.blueHelper.setScale(.25)
-        self.bluePointLight = self.blueHelper.attachNewNode(
-            PointLight("bluePointLight"))
-        self.bluePointLight.node().setAttenuation(LVector3(.1, 0.04, 0.0))
-        self.bluePointLight.node().setColor((.1, .1, .4, 1))
-        self.bluePointLight.node().setSpecularColor((1, 1, 1, 1))
-        
-        self.pointLightHelper = danceNode.attachNewNode("pointLightHelper")
-        self.pointLightHelper.setPos(0, 50, 11)
-        self.redHelper.reparentTo(self.pointLightHelper)
-        self.greenHelper.reparentTo(self.pointLightHelper)
-        self.blueHelper.reparentTo(self.pointLightHelper)
-        self.pointLightsSpin = self.pointLightHelper.hprInterval(
-            6, LVector3(360, 0, 0))
-        self.pointLightsSpin.loop()
-        self.arePointLightsSpinning = True
-        #end point of the application(the data is different)
 
-        self.playIndex=0
-        self.animationDown=['pose','makeCircle','pose','makeCircle','pressKnee']
-        self.animationRight=['jump','jump','wave','wave','leapSwitch']
-        self.perPixelEnabled = True
-        self.shadowsEnabled = False
-        danceNode.setLight(self.ambientLight)
-        danceNode.setLight(self.directionalLight)
-        danceNode.setLight(self.spotlight)
-        danceNode.setLight(self.redPointLight)
-        danceNode.setLight(self.greenPointLight)
-        danceNode.setLight(self.bluePointLight)
-        self.dancer = Actor("dancer-final.egg",{"pressKnee": 
-        '-pressKnee.egg',
-        'leapSwitch':
-        "-leapSwitch.egg",'pose':'-pose.egg','makeCircle':'-makeCircle.egg',
-        'jump':'-jump.egg','wave':
-            '-wave.egg'})
-        self.dancer.setScale(1,1, 1)
-        self.dancer.setPos(0,20,-4)
-        self.dancer.reparentTo(danceNode)
+        # load and set up scene
+        danceScene = self.loader.loadModel("../models/disco_hall")
+        danceScene.reparentTo(danceNode)
+        danceScene.setPosHpr(0, 50, -4, 90, 0, 0)
 
-        self.score=0
-        self.miss=0
-        self.perfect=0
-        self.good=0
+        self.configureLights(danceNode)
+        self.configureDancer(danceNode)
 
-        self.scoreCircle=OnscreenImage(image =
-        './arrivalCircle.png', pos = (-1,0,0.8))
-        self.scoreCircle.setTransparency(TransparencyAttrib.MAlpha)
-        self.scoreCircle.setScale(0.2)
-        self.scoreText= OnscreenText(text =str(self.score), pos = (-1.02,0.76), 
+        scoreCircle=OnscreenImage(
+                        image = '../textures/arrivalCircle.png', pos = (-1,0,0.8))
+        scoreCircle.setTransparency(TransparencyAttrib.MAlpha)
+        scoreCircle.setScale(0.2)
+        scoreText= OnscreenText(text =str(0), pos = (-1.02,0.76), 
                             scale = 0.1,fg=(1,1,1,1))
 
         position=self.dancer.getPos()
         position[1]=0
         position[2]=-0.4
-        self.GUIarrows=DirectFrame(frameColor=(0.3,0.3,0.7,0.3),
+        GUIarrows=DirectFrame(frameColor=(0.3,0.3,0.7,0.3),
                                     frameSize=(-0.8,.8,0.2,-0.2),
                                     pos=position)
 
-        self.hitSign=OnscreenImage(image =
-        'circle.png', pos = (-0.6, 0, -0.4))
-        self.hitSign.setTransparency(TransparencyAttrib.MAlpha)
-        self.hitSign.setScale(0.15)
-        self.scoreReminder=OnscreenText(text ='PERFECT', pos = (-0.6,-0.4), 
+        hitSign=OnscreenImage(image ='../textures/circle.png', pos = (-0.6, 0, -0.4))
+        hitSign.setTransparency(TransparencyAttrib.MAlpha)
+        hitSign.setScale(0.15)
+        scoreReminder=OnscreenText(text ='PERFECT', pos = (-0.6,-0.4), 
                             scale = 0.04,fg=(1,1,1,1),shadow=(0.4,0.4,0.7,0.3))
-        # self.scoreReminder.hide()
 
-        self.setPanel('dance',Panel(danceNode, {'scoreCircle':self.scoreCircle,
-            'GUIarrows':self.GUIarrows,'hitSign':self.hitSign,'scoreText':self.scoreText,
-            'scoreReminder':self.scoreReminder}))
-        # self.panels['dance'] = Panel(danceNode,,)
+        self.setPanel('dance',Panel(danceNode, {'scoreCircle': scoreCircle,
+            'GUIarrows':GUIarrows,'hitSign': hitSign,'scoreText': scoreText,
+            'scoreReminder': scoreReminder}))
+
+    # configure lights in the scene
+    def configureLights(self, danceNode):
+        # set up ambient light
+        ambientLight = danceNode.attachNewNode(AmbientLight("ambientLight"))
+        ambientLight.node().setColor((0.1, 0.1, 0.1, 1))
+
+        # set up directional light directional Light
+        directionalLight = danceNode.attachNewNode(DirectionalLight("directionalLight"))
+        directionalLight.node().setColor((.1, .1, .1, 1))
+        directionalLight.node().setDirection(LVector3(1, 1, -2))
+        directionalLight.setZ(6)
+
+        dlens = directionalLight.node().getLens()
+        dlens.setFilmSize(41, 21)
+        dlens.setNearFar(50, 75)
+
+        # set up spotlight
+        spotlight = self.camera.attachNewNode(Spotlight("spotlight"))
+        spotlight.node().setColor((.6, .6, .6, 0))
+        spotlight.node().setSpecularColor((0, 0, 0, 1))
+        spotlight.node().setLens(PerspectiveLens())
+        spotlight.node().getLens().setFov(24, 24)
+        spotlight.node().setAttenuation(LVector3(0.6, 0.0, 0.0))
+        spotlight.node().setExponent(60.0)
+
+        # set up red light ball
+        redBall = loader.loadModel('../models/sphere')
+        redBall.setColor((0.2, 0.2, .35, 1))
+        redBall.setPos(-6.5, -3.75, 0)
+        redBall.setScale(.25)
+        redPointLight = redBall.attachNewNode(PointLight("redPointLight"))
+        redPointLight.node().setColor((.05, .3,.4, 1))
+        redPointLight.node().setAttenuation(LVector3(.1, 0.04, 0.0))
+
+        # set up green light ball
+        greenBall = loader.loadModel('../models/sphere')
+        greenBall.setColor((0.2, 0.2, .35, 1))
+        greenBall.setPos(0, 7.5, 0)
+        greenBall.setScale(.25)
+        greenPointLight = greenBall.attachNewNode(
+                                    PointLight("greenPointLight"))
+        greenPointLight.node().setAttenuation(LVector3(.1, .04, .0))
+        greenPointLight.node().setColor((.05, .3, .4, 1))
+
+        # set up blue light ball
+        blueBall = loader.loadModel('../models/sphere')
+        blueBall.setColor((0.2, 0.2, .35, 1))
+        blueBall.setPos(6.5, -3.75, 0)
+        blueBall.setScale(.25)
+        bluePointLight = blueBall.attachNewNode(PointLight("bluePointLight"))
+        bluePointLight.node().setAttenuation(LVector3(.1, 0.04, 0.0))
+        bluePointLight.node().setColor((.1, .1, .4, 1))
+        bluePointLight.node().setSpecularColor((1, 1, 1, 1))
 
 
-    def initDance(self,path):
-        
-        
-        
-        beats=getBeatFrame(path)
-        onsets=getOnSet(path)
-        self.heavy,self.lights=self.reduceBeats(beats,onsets)
-        self.arrowTime=self.heavy+self.lights
-        self.arrowIndexHeavy=0
-        self.arrowIndexLight=0
-        self.pressed=None
-        self.speed=5
-        self.arrowInts=[]
-        self.startTimes=[]
-        self.score=0
-        self.miss=0
-        self.perfect=0
-        self.good=0
-        self.accept('arrow_down', self.danceDown)
-        self.accept('arrow_right',self.danceRight)
-        if self.difficultyLevel=='easy':
-            self.FULLSCORE=len(self.heavy)
-        else:
-            self.FULLSCORE=len(self.heavy)+len(self.lights)
-        self.createGUI()
-        self.startTime = globalClock.getFrameTime()
+        # set up light group
+        lightGroup = danceNode.attachNewNode("pointLightHelper")
+        lightGroup.setPos(0, 50, 11)
+        redBall.reparentTo(lightGroup)
+        greenBall.reparentTo(lightGroup)
+        blueBall.reparentTo(lightGroup)
+        danceNode.setLight(ambientLight)
+        danceNode.setLight(directionalLight)
+        danceNode.setLight(spotlight)
+        danceNode.setLight(redPointLight)
+        danceNode.setLight(greenPointLight)
+        danceNode.setLight(bluePointLight)
+
+        # spin three light balls in the scene
+        pointLightsSpin = lightGroup.hprInterval(6, LVector3(360, 0, 0))
+        pointLightsSpin.loop()
+
+    # configure the dancing avatar in the scene
+    def configureDancer(self,danceNode):
+        self.dancer = Actor("../animation/dancer.egg",{"pressKnee": 
+        '../animation/-pressKnee.egg',
+        'leapSwitch': "../animation/-leapSwitch.egg",
+        'pose':'../animation/-pose.egg',
+        'makeCircle':'../animation/-makeCircle.egg',
+        'jump':'../animation/-jump.egg',
+        'wave': '../animation/-wave.egg'})
+        self.dancer.setScale(1,1, 1)
+        self.dancer.setPos(0,20,-4)
+        self.dancer.reparentTo(danceNode)
+
+        self.actionIndex=0
+        self.animationDown=['pose','makeCircle','pose','makeCircle','pressKnee']
+        self.animationRight=['jump','jump','wave','wave','leapSwitch']
+
+    # create the dance sequence according to the 
+    def createDance(self,path):
+        self.game = musicGameCore.DanceGame(self, path,self.difficultyLevel)
+        self.FULLSCORE, self.arrows = self.game.processMusic()
+        self.accept('arrow_down', lambda: self.pressKey('h'))
+        self.accept('arrow_right',lambda: self.pressKey('l'))
+        self.createArrows()
+        self.getPanel('dance').getItem('scoreText').setText('0') 
+
         self.sound=self.loader.loadSfx(path)
+        self.BGM.stop()
+        self.mode = self.NPRESSED
+
         self.sound.play()
-        self.PRESSED,self.NPRESSED,self.PERFECT,self.GOOD,self.MISS=10,-10,2,1,0
-        self.mode=self.NPRESSED
-        self.perfectBuffer=0.15
-        self.goodBuffer=0.25
+        self.game.startDance(globalClock.getFrameTime())
+        self.move2DArrows()
+        self.colorStart=-1
+        self.pressedStart=0
+        self.taskMgr.add(self.checkInFrame,'checkInFrame')
+        self.taskMgr.add(self.game.isArrowMissed,'checkArrows')
+        self.taskMgr.add(self.checkColorStop,'checkColorStop')
+        self.taskMgr.add(self.spinCam,'spinCam')
+        
         self.accept('space',self.stopSound)
         self.taskMgr.add(self.checkStop,'checkStop')
-    
+
+    # load texture and create arrows
+    def createArrows(self):
+        self._2DleftArrow="../textures/left_arrow.png"
+        self._2DupArrow="../textures/up_arrow.png"
+        self._2DrightArrow=("../textures/right_arrow.png")
+        self._2DdownArrow=("../textures/down_arrow.png")
+        self.generate2DArrows(self.arrows)
+        
+    # generate a sequence of arrows to be displayed on screen
+    def generate2DArrows(self,arrowList):
+        self.movingArrows =[None] * self.FULLSCORE
+        for i in range(len(arrowList)):
+            imagePath = self._2DdownArrow
+            if(arrowList[i].type == 'l'):
+                imagePath = self._2DrightArrow
+            arrow=OnscreenImage(image = imagePath, pos = (0.3, 0, 0))
+            arrow.setTransparency(TransparencyAttrib.MAlpha)
+            arrow.setScale(0.1)
+            x,y,z=-0.6,0,0
+            startX,startY,startZ=x+arrowList[i].getExpectedTime(),y,z
+            arrow.setPos(startX,startY,startZ)
+            arrow.reparentTo(self.getPanel('dance').getItem('GUIarrows'))
+            arrow.hide()
+            self.movingArrows[i] = arrow
+
+    # let a sequence of arrows to move
+    def move2DArrows(self):
+        musicStartTime = self.game.getStartTime() 
+        for i in range(self.FULLSCORE):
+            arrow = self.movingArrows[i]
+            actualDuration =  musicStartTime + self.arrows[i].getExpectedTime() - globalClock.getFrameTime() 
+            x,y,z=-0.6,0,0
+            startX,startY,startZ=x+self.arrows[i].getExpectedTime(),y,z
+            animation=arrow.posInterval( actualDuration, Point3(-0.6,0,startZ),
+                                        startPos=Point3(startX,startY,startZ))
+            animation.start()
+
+    # function that stops the whole dance
     def stopSound(self):
         self.sound.stop()
     
-    def calculateScore(self):
-        self.score=self.perfect*1.5+self.good
-    
+    # check if the dance game ends
     def checkStop(self,task):
-        if (self.sound.status()!=AudioSound.PLAYING) and self.selected=='dance':
-            self.sound.stop()
-            self.selected='gameScore'
-            for child in self.getPanel('dance').getBackground().getChildren():
-                child=None
-            # self.dance.removeNode()
-            # self.dance=self.render.attachNewNode(PandaNode('dance'))
-            # self.scoreCircle.destroy()
-            # self.hitSign.destroy()
-            # self.scoreReminder.destroy()
-
-            # self.GUIarrows.destroy()
-            # self.scoreText.destroy()
+        if (self.sound.status()!=AudioSound.PLAYING):
+            position=self.dancer.getPos()
+            position[1]=0
+            position[2]=-0.4
+            self.getPanel('dance').getItem('GUIarrows').destroy()
+            self.getPanel('dance').setItem('GUIarrows',
+                                    DirectFrame(frameColor=(0.3,0.3,0.7,0.3),
+                                    frameSize=(-0.8,.8,0.2,-0.2),
+                                    pos=position))
             self.taskMgr.remove('checkInFrame')
             self.taskMgr.remove('checkArrows')
             self.taskMgr.remove('checkColorStop')
+            self.taskMgr.remove('checkStop')
+            self.taskMgr.remove('spinCam')
             self.initGameScore()
-            self.changeMenu('dance','gameScore')
-            # self.gameScore.show()
+            self.BGM.play()
+
+        return task.cont     
+    
+    # show all the arrows in displaying frame
+    def checkInFrame(self,task):
+        for i in range(len(self.movingArrows)):
+            endTime=globalClock.getFrameTime()
+            startTime = self.game.getStartTime()
+            if int((self.arrows[i].getExpectedTime()-(endTime-startTime))*10)<=-1:
+                self.movingArrows[i].hide()
+            elif int(abs(self.arrows[i].getExpectedTime()-(endTime-startTime))*10)<=12:
+                self.movingArrows[i].show()
         return task.cont
-    
-    
-    def setGameScoreBackground(self):
-        score=100*float(self.score)/self.FULLSCORE
-        if score>=120:
-            self.gameScoreBackground = OnscreenImage(parent=render2dp, 
-            image='SCORE_S.jpg') 
-        elif score>=100:
-            self.gameScoreBackground = OnscreenImage(parent=render2dp, 
-            image='SCORE_A.jpg') 
-        elif score>=80:
-            self.gameScoreBackground = OnscreenImage(parent=render2dp, 
-            image='SCORE_B.jpg')
-        elif score>=60:
-            self.gameScoreBackground=OnscreenImage(parent=render2dp, 
-            image='SCORE_C.jpg')
-        else:
-            self.gameScoreBackground=OnscreenImage(parent=render2dp, 
-            image='SCORE_F.jpg')
-    
-    def checkHighScore(self):
-        highScore=self.highestScores[self.currSong]
-        flag=False
-        if self.score > highScore:
-            highScore=self.score
-            self.highestScores[self.currSong]=highScore
-            file=open('musicGameData.txt','r')
-            lines=file.readlines()
-            newLines=lines
-            changeLine=-1
-            for num,line in enumerate(lines):
-                if line==self.currSong+'\n':
-                    print('here')
-                    changeLine=num+2
-            file.close()
-            file=open('musicGameData.txt','w')
-            newLines[changeLine]=str(highScore)+'\n'
-            for line in newLines:
-                file.write(line)
-            file.close()
-            flag=True
-        return highScore,flag
-    
-    
+
+    # check if the effect of shining circle should stop
+    def checkColorStop(self,task):
+        endTime=globalClock.getFrameTime()
+        time=endTime-self.colorStart
+        if (endTime-self.pressedStart)>=0.001:
+            self.pressed=None
+            self.mode=self.NPRESSED
+        if time>=0.2:
+            hitSign = self.getPanel('dance').getItem('hitSign')
+            scoreReminder = self.getPanel('dance').getItem('scoreReminder')
+            hitSign.setImage('../textures/circle.png')
+            hitSign.setTransparency(TransparencyAttrib.MAlpha)
+            scoreReminder.hide()
+        return task.cont
+
+    #  spin the camera
+    def spinCam(self,task):
+        time=task.time
+        # THIS IS REALLY SIMILAR TO THE SAMPLE OF PANDA3D
+        x,y,z=self.dancer.getPos()
+        angleDegrees = task.time* 6.0
+        angleRadians = angleDegrees * (pi / 180.0)
+        self.camera.setPos(x+20 * sin(angleRadians), y+-20.0 * cos(angleRadians), 0)
+        self.camera.setHpr(angleDegrees, -5, 0)
+        #END POINT OF SIMILARITY
+        return Task.cont
+
+    # function to be called after pressing key
+    def pressKey(self, key):
+        self.pressed=key
+        self.pressedStart=globalClock.getFrameTime()
+        self.game.keyPressed(key)
+        
+    # function that let the any icon to disappear
+    def iconDisappear(self, icon, effectColor):
+        LerpColorInterval(icon,0.2,color=(effectColor[0],effectColor[1],effectColor[2],0), 
+                        startColor= (effectColor[0],effectColor[1],effectColor[2],1)).start()
+
+    # the effect should display after some arrow events happen
+    def pressEffect(self, type, idx):
+        self.colorStart=globalClock.getFrameTime()
+        self.getPanel('dance').getItem('scoreReminder').setText(type)
+        if(type == 'MISS'):
+            self.blinkColor((1,0,0))
+            self.mode = self.MISS
+            if(idx != -1):
+                self.iconDisappear(self.movingArrows[idx],(0.8,0.8,1))
+        elif(type == 'GOOD'):
+            self.blinkColor((0,0,1))
+            self.mode = self.GOOD
+        elif(type == 'PERFECT'):
+            self.blinkColor((0,0,1))
+            self.mode = self.PERFECT
+        if self.mode == self.GOOD or self.mode == self.PERFECT:
+            self.dancer.play(self.animationDown[self.actionIndex])
+            self.actionIndex+=1
+            if self.actionIndex>=5:
+                self.actionIndex=self.actionIndex%5
+        elif self.mode == self.MISS:
+            self.dancer.stop()
+
+    # let the stop circle blinks speficied light
+    def blinkColor(self, effectColor):
+        hitSign = self.getPanel('dance').getItem('hitSign')
+        self.iconDisappear(hitSign,effectColor)
+        scoreReminder = self.getPanel('dance').getItem('scoreReminder')
+        scoreReminder.show()
+        self.iconDisappear(scoreReminder, (0.4,0.4,0.7))
+        self.colorStart = globalClock.getFrameTime()
+
+    # let the game score 
     def initGameScore(self):
-        print 'initGAmmmmmmm\n'
-        self.setGameScoreBackground()
-        self.cam2dp.node().getDisplayRegion(0).setSort(-20) 
-        self.highScoreTuple=self.checkHighScore()
+        score,miss,good,perfect = self.game.getScoreReport()
+        self.setGameScoreBackground(score)
+        self.highScoreTuple=self.updateHighestScore(score)
         self.gameScoreText=OnscreenText(
-                        text='Total: '+str(self.score),pos=(-0.8,0.7),
+                        text='Total: '+str(score),pos=(-0.8,0.7),
                                     scale = 0.2,fg=(1,0.78,0.18,1),mayChange=1)
         self.newHigh=OnscreenText(
                         text='New High!',pos=(-0.7,0.5),
                                     scale = 0.15,fg=(1,1,1,1),mayChange=1)
-        if self.highScoreTuple[1]:
-            self.newHigh.show()
-        else:
-            self.newHigh.hide()
         self.scoreFrame=DirectFrame(pos=(0.6,0,-0.6),
                     frameSize = (-0.2,0.6,-0.2,0.2),frameColor=(0,0.1,0.3,1))
         self.perfectLabel=DirectLabel(
-                                    text='Perfect: '+str(self.perfect),
+                                    text='Perfect: '+str(perfect),
                                     pos=(0,0,.1),text_align=TextNode.ALeft,
                                     scale = 0.1,text_fg=(0.28,0.65,858,1),
                                     frameColor=(1,1,1,0),text_scale=(0.9,0.9))
         self.goodLabel=DirectLabel(
-                                    text='Good: '+str(self.good),
+                                    text='Good: '+str(good),
                                     pos=(0,0,0),
                                     scale = 0.1,text_fg=(0.52,0.67,0.52,1),
                                     text_align=TextNode.ALeft,
                                     frameColor=(1,1,1,0),text_scale=(0.9,0.9))
         self.missLabel=DirectLabel(
-                                    text='Miss: '+str(self.miss),
+                                    text='Miss: '+str(miss),
                                     pos=(0,0,-.1),
                                     scale = 0.1,text_fg=(0.72,0.67,0.67,1),
                                     text_align=TextNode.ALeft,
@@ -784,303 +712,68 @@ class MusicGame(ShowBase):
                                     text_pos=(-0.5,-0.1),
                                    scale=.1, pad=(.2, .2),frameSize=(-1,6.6,-0.8,0.8),
                                    rolloverSound=None, clickSound=None,
-                                   command=lambda: self.changeMenu('gameScore','mainMenu'))
+                                   command=lambda: self.switchPanel('gameScore','mainMenu'))
         self.setPanel('gameScore',Panel(self.gameScoreBackground,{'scoreText':self.gameScoreText, 'newHigh':self.newHigh,
             'scoreFrame':self.scoreFrame,'retry':self.retryButton,'mainMenu':self.mainMenuButton}))
-        print 'setPanel'
-    
-    def retry(self):
-        self.selected='dance'
-        self.initDance(self.musicPathes[self.currSong])
-        # self.gameScore.hide()
-        self.changeMenu('gameScore','dance')
-        # self.gameScoreBackground.hide()
-        # self.gameScoreText.hide()
-        # self.scoreFrame.hide()
-        # self.newHigh.hide()
-        # self.retryButton.hide()
-        # self.mainMenuButton.hide()
-        # self.dance.show()
-        # self.GUIarrows.show()
-        # self.scoreText.show()
-        # self.songList.hide()       
-        
-    def backToMenu(self):
-        # self.gameScore.hide()
-        # self.gameScoreBackground.hide()
-        # self.gameScoreText.hide()
-        # self.scoreFrame.hide()
-        # self.newHigh.hide()
-        # self.retryButton.hide()
-        # self.mainMenuButton.hide()
-        self.changeMenu('gameScore','mainMenu')
-        # self.mainMenuBackground.show()
-        # self.importButton.show()
-        # self.backToOptionButton.show()
-        # self.songList.show()
-        # self.mainMenu.show()
-        
-                
-    def createGUI(self):
-        
-        self._2DArrows=[]
-        
-        self._2DleftArrow=loader.loadTexture("left_arrow.png")
-        self._2DupArrow=loader.loadTexture("up_arrow.png")
-        self._2DrightArrow=("right_arrow.png")
-        self._2DdownArrow=("down_arrow.png")
-        if self.difficultyLevel=='easy':
-            self.generate2DArrows(self.heavy,self._2DdownArrow,0)
+        self.switchPanel('dance','gameScore')
+        if self.highScoreTuple[1]:
+            self.newHigh.show()
         else:
-            self.generate2DArrows(self.heavy,self._2DdownArrow,0)
-            self.generate2DArrows(self.lights,self._2DrightArrow,1)
-        self.colorStart=-1
-        self.pressedStart=0
-        self.taskMgr.add(self.checkInFrame,'checkInFrame')
-        self.taskMgr.add(self.checkArrows,'checkArrows')
-        self.taskMgr.add(self.checkColorStop,'checkColorStop')
-        
+            self.newHigh.hide()
+
+    # display different backgrounds for different scores
+    def setGameScoreBackground(self, score):
+        score=100*float(score)/self.FULLSCORE
+        if score>=120:
+            self.gameScoreBackground = OnscreenImage(parent=render2dp, 
+            image='../textures/SCORE_S.jpg') 
+        elif score>=100:
+            self.gameScoreBackground = OnscreenImage(parent=render2dp, 
+            image='../textures/SCORE_A.jpg') 
+        elif score>=80:
+            self.gameScoreBackground = OnscreenImage(parent=render2dp, 
+            image='../textures/SCORE_B.jpg')
+        elif score>=60:
+            self.gameScoreBackground=OnscreenImage(parent=render2dp, 
+            image='../textures/SCORE_C.jpg')
+        else:
+            self.gameScoreBackground=OnscreenImage(parent=render2dp, 
+            image='../textures/SCORE_F.jpg')
     
-    def checkColorStop(self,task):
-        if self.selected=='dance':
-            endTime=globalClock.getFrameTime()
-            time=endTime-self.colorStart
-            if (endTime-self.pressedStart)>=0.001:
-                self.pressed=None
-                self.mode=self.NPRESSED
-            if time>=0.2:
-                self.hitSign.setImage('circle.png')
-                self.hitSign.setTransparency(TransparencyAttrib.MAlpha)
-                self.scoreReminder.hide()
-            return task.cont
-        
-    
-    def reduceBeats(self,beats,onsets):
-        newBeats=set(map(lambda x: int(10*x),beats))
-        newOnsets=list(list(map(lambda x: int(10*x),onsets)))
-        reducedList=[]
-        lights=[]
-        for i in range(len(newOnsets)):
-            if newOnsets[i] in newBeats:
-                reducedList.append(float(newOnsets[i])/10)
-                lights.append(float(newOnsets[i])/10)
-            else:
-                lights.append(float(newOnsets[i])/10)
-        
-        checkOnsets=map(lambda x: [True,x],lights)
-        for i in range(1,len(checkOnsets)-1):
-            if (checkOnsets[i][1]-checkOnsets[i-1][1]>0.2 or
-                    checkOnsets[i][1]-checkOnsets[i-1][1]>0.2):
-                        checkOnsets[i][0]=True
-            else:
-                checkOnsets[i][0]=False
-        groupLights=map(lambda x: x[1],filter(lambda x: not x[0], checkOnsets))
-        lights=map(lambda x: x[1],filter(lambda x: x[0], checkOnsets))
-        check=set(reducedList)
-        for stuff in reversed(lights):
-            for time in range(int(stuff*10-2),int(stuff*10+3)):
-                if float(time)/10 in check:
-                    lights.remove(stuff)
-                    break
-        return reducedList,lights
-        
-    def generate2DArrows(self,arrowList,imagePath,num):
-        for i in range(len(arrowList)):
-            arrow=OnscreenImage(image = imagePath, pos = (0.3, 0, 0))
-            arrow.setTransparency(TransparencyAttrib.MAlpha)
-            arrow.setScale(0.1)
-            x,y,z=-0.6,0,0
-            startX,startY,startZ=x+arrowList[i],y,z
-            arrow.setPos(startX,startY,startZ)
-            arrow.reparentTo(self.GUIarrows)
-            arrowInt=arrow.posInterval(arrowList[i],
-                                        Point3(-0.6,0,startZ),
-                                    startPos=Point3(startX,startY,startZ))
-            arrow.hide()
-            self.arrowInts.append(arrowInt)
-            self._2DArrows.append(arrow)
-            startTime = globalClock.getFrameTime()
-            self.startTimes.append(startTime)
-            arrowInt.start()
+    # compare the score to the highest score of the music
+    def updateHighestScore(self,score):
+        highScore=self.highestScores[self.currSong]
+        flag=False
+        if score > highScore:
+            highScore=score
+            self.highestScores[self.currSong]=highScore
+            oldFrame = self.getPanel('scoreBoard').getItem('frame')
+            newFrame = self.createHighScoreFrame()
+            self.getPanel('scoreBoard').setItem('frame',newFrame)
+            newFrame.hide()
+            oldFrame.destroy()
+            file=open('musicGameData.txt','r')
+            lines=file.readlines()
+            newLines=lines
+            changeLine=-1
+            for num,line in enumerate(lines):
+                if line==self.currSong+'\n':
+                    changeLine=num+2
+            file.close()
+            file=open('musicGameData.txt','w')
+            newLines[changeLine]=str(highScore)+'\n'
+            for line in newLines:
+                file.write(line)
+            file.close()
+            flag=True
+        return highScore,flag
 
-    def generateArrows(self,arrowList,arrow):
-        for i in range(len(arrowList)):
-            self.arrows[i] = copy.deepcopy(arrow)
-            self.arrows[i].setScale(0.5)
-            x,y,z=self.dancer.getPos()
-            startX,startY,startZ=x+self.speed*arrowList[i],y,z
-            self.arrows[i].setPos(startX,startY,startZ)
-            self.arrows[i].reparentTo(self.self.danceScene)
-            arrowInt=self.arrows[i].posInterval(arrowList[i],
-                                        Point3(-self.speed,startY,startZ),
-                                    startPos=Point3(startX,startY,startZ))
-            self.arrowInts.append(arrowInt)
-            startTime = globalClock.getFrameTime()
-            self.startTimes.append(startTime)
-            arrowInt.start()
-    
-    def checkInFrame(self,task):
-        for i in range(len(self._2DArrows)):
-            endTime=globalClock.getFrameTime()
-            startTime=self.startTimes[i]
-            if int((self.arrowTime[i]-(endTime-startTime))*10)<=-1:
-                self._2DArrows[i].hide()
-            elif int(abs(self.arrowTime[i]-(endTime-startTime))*10)<=12:
-                self._2DArrows[i].show()
-        return task.cont
+    # function called to restart the dance
+    def retry(self):
+        self.createDance(self.musicPathes[self.currSong])
+        self.switchPanel('gameScore','dance') 
 
-
-    def checkArrows(self,task):
-        if self.selected=='dance':
-            if self.difficultyLevel=='easy':
-                if(self.arrowIndexHeavy>=len(self.heavy)):
-                    return
-                stdTime=self.heavy[self.arrowIndexHeavy]
-                startTime=self.startTimes[self.arrowIndexHeavy]
-                checkStuff='h'
-                endTime=globalClock.getFrameTime()
-                time=endTime-startTime
-                if (time-stdTime)>self.goodBuffer:
-                    self.colorStart=globalClock.getFrameTime()
-                    self.mode=self.MISS
-                    self.miss+=1
-                    self.scoreReminder.setText('MISS')
-                    self.changeMissColor()
-                    self.arrowIndexHeavy+=1
-                elif (self.pressed==checkStuff and 
-                                    abs(time-stdTime)<=self.perfectBuffer):
-                    self.colorStart=globalClock.getFrameTime()
-                    self.mode=self.PERFECT
-                    self.perfect+=1
-                    self.scoreReminder.setText('PERFECT')
-                    self.changePassColor()
-                    self.arrowIndexHeavy+=1
-                elif (self.pressed==checkStuff and 
-                                abs(time-stdTime)<=self.goodBuffer):
-                    self.colorStart=globalClock.getFrameTime()
-                    self.mode=self.GOOD
-                    self.good+=1
-                    self.scoreReminder.setText('GOOD')
-                    self.changePassColor()
-                    self.arrowIndexHeavy+=1
-                self.calculateScore()
-                self.scoreText['text']=(str(self.score))
-            else:
-                if (self.arrowIndexHeavy>=len(self.heavy) and self.arrowIndexLight>=
-                                len(self.lights)):
-                    return
-                elif self.arrowIndexHeavy>=len(self.heavy):
-                    stdTime=self.lights[self.arrowIndexLight]
-                    startTime=self.startTimes[self.arrowIndexLight+len(self.heavy)]
-                    checkStuff='l'
-                elif self.arrowIndexLight>=len(self.lights):
-                    stdTime=self.heavy[self.arrowIndexHeavy]
-                    startTime=self.startTimes[self.arrowIndexHeavy]
-                    checkStuff='h'
-                else:
-                    stdTime=self.heavy[self.arrowIndexHeavy]
-                    startTime=self.startTimes[self.arrowIndexHeavy]
-                    checkStuff='h'
-                    if (self.heavy[self.arrowIndexHeavy]>
-                                        self.lights[self.arrowIndexLight]):
-                        stdTime=self.lights[self.arrowIndexLight]
-                        startTime=(
-                            self.startTimes[self.arrowIndexLight+len(self.heavy)])
-                        checkStuff='l'
-                endTime=globalClock.getFrameTime()
-                time=endTime-startTime
-                if (time-stdTime)>self.goodBuffer:
-                    self.colorStart=globalClock.getFrameTime()
-                    self.mode=self.MISS
-                    self.miss+=1
-                    self.scoreReminder.setText('MISS')
-                    self.changeMissColor()
-                    if checkStuff=='h':
-                        self.arrowIndexHeavy+=1
-                    else:
-                        self.arrowIndexLight+=1
-                elif (self.pressed==checkStuff and 
-                                    abs(time-stdTime)<=self.perfectBuffer):
-                    self.colorStart=globalClock.getFrameTime()
-                    self.mode=self.PERFECT
-                    self.perfect+=1
-                    self.scoreReminder.setText('PERFECT')
-                    self.changePassColor()
-                    if checkStuff=='h':
-                        self.arrowIndexHeavy+=1
-                    else:
-                        self.arrowIndexLight+=1
-                elif (self.pressed==checkStuff and 
-                                abs(time-stdTime)<=self.goodBuffer):
-                    self.colorStart=globalClock.getFrameTime()
-                    self.mode=self.GOOD
-                    self.good+=1
-                    self.scoreReminder.setText('GOOD')
-                    self.changePassColor()
-                    if checkStuff=='h':
-                        self.arrowIndexHeavy+=1
-                    else:
-                        self.arrowIndexLight+=1
-                self.calculateScore()
-                self.scoreText['text']=(str(self.score))
-            return task.cont
-
-    def danceDown(self):
-        if self.selected=='dance':
-            self.pressed='h'
-            self.pressedStart=globalClock.getFrameTime()
-            if self.pressed==self.MISS:
-                self.dancer.stop()
-            else:
-                self.dancer.play(self.animationDown[self.playIndex])
-                self.playIndex+=1
-                if self.playIndex>=5:
-                    self.playIndex=self.playIndex%5
-        
-    def changePassColor(self):
-        if self.selected=='dance':
-            LerpColorInterval(
-                self.hitSign,0.2,color=(0,0,1,0), startColor=(0,0,1,1)).start()
-            self.scoreReminder.show()
-            LerpColorInterval(
-                self.scoreReminder,0.2,color=(0.4,0.4,0.7,0), 
-                        startColor=(0.4,0.4,0.7,1)).start()
-    
-    def changeMissColor(self):
-        if self.selected=='dance':
-            LerpColorInterval(
-            self.hitSign,0.2,color=(1,0,0,0), startColor=(1,0,0,1)).start()
-            self.scoreReminder.show()
-            LerpColorInterval(self.scoreReminder,0.2,color=(0.4,0.4,0.7,0), startColor=(0.4,0.4,0.7,1)).start()
-    
-    def danceRight(self):
-        if self.selected=='dance':
-            self.pressed='l'
-            self.pressedStart=globalClock.getFrameTime()
-            if self.pressed==self.MISS:
-                self.dancer.stop()
-            else:
-                self.dancer.play(self.animationRight[self.playIndex])
-                self.playIndex+=1
-                if self.playIndex>=5:
-                    self.playIndex=self.playIndex%5
-
-    def spinCam(self,task):
-        if self.selected=='mainMenu':
-            self.camera.setPos(0, 0, 3)
-            self.camera.setHpr(0, -5, 0)
-        elif self.selected=='dance':
-            time=task.time
-            # THIS IS REALLY SIMILAR TO THE SAMPLE OF PANDA3D
-            x,y,z=self.dancer.getPos()
-            angleDegrees = task.time* 6.0
-            angleRadians = angleDegrees * (pi / 180.0)
-            self.camera.setPos(x+20 * sin(angleRadians), y+-20.0 * cos(angleRadians), 0)
-            self.camera.setHpr(angleDegrees, -5, 0)
-            #END POINT OF SIMILARITY
-        return Task.cont
-
-MusicGame().run()
+JustDanceGUI().run()
 
 
         
