@@ -1,1 +1,3 @@
-code/audio_clear.py
+src/*.pyc
+src/musicGameData.txt
+project_video.docx

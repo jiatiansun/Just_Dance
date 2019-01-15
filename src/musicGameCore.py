@@ -1,5 +1,5 @@
 
-from core import *
+from beatDetection import *
 from util import *
 import decimal
 
