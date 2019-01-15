@@ -1,11 +1,18 @@
 
-The project uses panda3D and audio to build a music game in which interactions between music and users are engaged. 
-For the sources mentioned above, panda3D can be downloaded at [Download Panda3D](https://www.panda3d.org/download.php") simply by following the instructions on the certain website. 
-Also, by following instructions on [Download Aubio](https://aubio.org/download), audio can be downloaded.
+# What is JustDance
+The project uses Panda3D and Audio to build a rythm game in which interactions between music and users are engaged. 
 
-The problem you might encounter to run this program is that you might find your version of python only match with one of the module . Since panda3D stabled version only supports python2, you need to install aubio on python2 and compile panda3D on python2. 
+# Installation
+To run the project you need to have both Panda3D version and Audio version compatible with python2.7 installed.
+Specifically, you can download panda3D at [Panda3D official website](https://www.panda3d.org/download.php")  and Aubio from [Aubio official website](https://aubio.org/download).
 
-After the installation, you can shall change all the directories in the code to which you really put the file on you computer or put all these documents in the same folder, and make the path into their file names and then run the program by simply commandLine using python2 like below:
+## Possible Installation problem
+The problem you might encounter to run this program is that you might find your version of your python only matches one of Panda3D and Audio. Since panda3D's stabled version only supports python2, you need to install aubio on python2 and compile panda3D on python2. 
+
+# Run JustDance
+After the installation, you run the program simply by cloning this repository and running commandLine below in the repository:
+
 `ppython src/GUI.py`
 
-
+# Demo
+Here is a short demo that shows how to play the game: [Demo](https://youtu.be/ZgFJ6O6PidU)
